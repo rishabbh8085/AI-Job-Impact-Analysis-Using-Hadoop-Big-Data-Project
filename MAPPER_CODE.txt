@@ -1,1 +1,97 @@
+#!/usr/bin/env python3
+"""
+Mapper for AI Job Impact Analysis
+Performs multiple analytics in one pass:
+1. Count job status by industry
+2. Calculate salary changes
+3. Track upskilling requirements
 
+Input format: CSV with headers
+Output format: Key\tValue pairs for different analyses
+"""
+
+import sys
+
+def main():
+    # Skip header line
+    first_line = True
+    
+    for line in sys.stdin:
+        line = line.strip()
+        
+        if not line:
+            continue
+            
+        # Skip header
+        if first_line:
+            first_line = False
+            if 'Employee_ID' in line or 'Age' in line:
+                continue
+        
+        # Parse CSV line (handles quoted fields)
+        fields = []
+        current_field = ""
+        in_quotes = False
+        
+        for char in line:
+            if char == '"':
+                in_quotes = not in_quotes
+            elif char == ',' and not in_quotes:
+                fields.append(current_field.strip())
+                current_field = ""
+            else:
+                current_field += char
+        fields.append(current_field.strip())
+        
+        # Ensure we have all required fields
+        if len(fields) < 17:
+            continue
+            
+        try:
+            # Extract relevant fields
+            employee_id = fields[0]
+            industry = fields[4]
+            job_role = fields[5]
+            ai_adoption = fields[6]
+            automation_risk = fields[7]
+            upskilling = fields[8]
+            salary_before = float(fields[9]) if fields[9] else 0
+            salary_after = float(fields[10]) if fields[10] else 0
+            job_status = fields[11]
+            productivity_change = float(fields[16]) if len(fields) > 16 and fields[16] else 0
+            
+            # Calculate salary change percentage
+            if salary_before > 0:
+                salary_change_pct = ((salary_after - salary_before) / salary_before) * 100
+            else:
+                salary_change_pct = 0
+            
+            # ANALYSIS 1: Job Status by Industry
+            # Key: STATUS_INDUSTRY:{industry}:{job_status}
+            # Value: 1
+            print(f"STATUS_INDUSTRY\t{industry}|{job_status}|1")
+            
+            # ANALYSIS 2: Industry count for distribution
+            print(f"INDUSTRY_COUNT\t{industry}|1")
+            
+            # ANALYSIS 3: Salary impact by industry
+            print(f"SALARY_IMPACT\t{industry}|{salary_before}|{salary_after}|{salary_change_pct}")
+            
+            # ANALYSIS 4: Upskilling requirement by job role
+            print(f"UPSKILLING\t{job_role}|{upskilling}|1")
+            
+            # ANALYSIS 5: Automation risk by industry
+            print(f"AUTOMATION_RISK\t{industry}|{automation_risk}|1")
+            
+            # ANALYSIS 6: Productivity change by AI adoption level
+            print(f"PRODUCTIVITY\t{ai_adoption}|{productivity_change}")
+            
+            # ANALYSIS 7: Job status by AI adoption level
+            print(f"ADOPTION_STATUS\t{ai_adoption}|{job_status}|1")
+            
+        except (ValueError, IndexError) as e:
+            # Skip malformed lines
+            continue
+
+if __name__ == "__main__":
+    main()
