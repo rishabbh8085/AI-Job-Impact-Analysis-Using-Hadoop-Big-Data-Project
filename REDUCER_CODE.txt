@@ -1,1 +1,169 @@
+#!/usr/bin/env python3
+"""
+Reducer for AI Job Impact Analysis
+Aggregates mapper output to produce final results
+"""
 
+import sys
+
+def main():
+    current_key = None
+    current_values = {}
+    
+    # Initialize accumulators for different analysis types
+    industry_status_count = {}
+    industry_total_count = {}
+    industry_salary = {}
+    upskilling_count = {}
+    automation_risk_count = {}
+    productivity_ai = {}
+    adoption_status_count = {}
+    
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+            
+        parts = line.split('\t', 1)
+        if len(parts) != 2:
+            continue
+            
+        key_type = parts[0]
+        value_data = parts[1]
+        
+        # Process STATUS_INDUSTRY
+        if key_type == "STATUS_INDUSTRY":
+            try:
+                industry, status, count = value_data.split('|')
+                map_key = f"{industry}|{status}"
+                industry_status_count[map_key] = industry_status_count.get(map_key, 0) + int(count)
+            except:
+                continue
+                
+        # Process INDUSTRY_COUNT
+        elif key_type == "INDUSTRY_COUNT":
+            try:
+                industry, count = value_data.split('|')
+                industry_total_count[industry] = industry_total_count.get(industry, 0) + int(count)
+            except:
+                continue
+                
+        # Process SALARY_IMPACT
+        elif key_type == "SALARY_IMPACT":
+            try:
+                industry, salary_before, salary_after, salary_change = value_data.split('|')
+                if industry not in industry_salary:
+                    industry_salary[industry] = {'sum_before': 0, 'sum_after': 0, 'count': 0, 'total_change': 0}
+                industry_salary[industry]['sum_before'] += float(salary_before)
+                industry_salary[industry]['sum_after'] += float(salary_after)
+                industry_salary[industry]['count'] += 1
+                industry_salary[industry]['total_change'] += float(salary_change)
+            except:
+                continue
+                
+        # Process UPSKILLING
+        elif key_type == "UPSKILLING":
+            try:
+                job_role, upskilling, count = value_data.split('|')
+                map_key = f"{job_role}|{upskilling}"
+                upskilling_count[map_key] = upskilling_count.get(map_key, 0) + int(count)
+            except:
+                continue
+                
+        # Process AUTOMATION_RISK
+        elif key_type == "AUTOMATION_RISK":
+            try:
+                industry, risk, count = value_data.split('|')
+                map_key = f"{industry}|{risk}"
+                automation_risk_count[map_key] = automation_risk_count.get(map_key, 0) + int(count)
+            except:
+                continue
+                
+        # Process PRODUCTIVITY
+        elif key_type == "PRODUCTIVITY":
+            try:
+                ai_level, productivity = value_data.split('|')
+                if ai_level not in productivity_ai:
+                    productivity_ai[ai_level] = {'sum': 0, 'count': 0}
+                productivity_ai[ai_level]['sum'] += float(productivity)
+                productivity_ai[ai_level]['count'] += 1
+            except:
+                continue
+                
+        # Process ADOPTION_STATUS
+        elif key_type == "ADOPTION_STATUS":
+            try:
+                ai_level, status, count = value_data.split('|')
+                map_key = f"{ai_level}|{status}"
+                adoption_status_count[map_key] = adoption_status_count.get(map_key, 0) + int(count)
+            except:
+                continue
+    
+    # OUTPUT 1: Job Status by Industry
+    print("\n" + "="*80)
+    print("ANALYSIS 1: JOB STATUS BY INDUSTRY")
+    print("="*80)
+    for key, count in sorted(industry_status_count.items()):
+        industry, status = key.split('|')
+        print(f"Industry: {industry}, Status: {status}, Count: {count}")
+    
+    # OUTPUT 2: Industry Distribution
+    print("\n" + "="*80)
+    print("ANALYSIS 2: TOTAL EMPLOYEES BY INDUSTRY")
+    print("="*80)
+    for industry, count in sorted(industry_total_count.items(), key=lambda x: x[1], reverse=True):
+        print(f"Industry: {industry}, Total Employees: {count}")
+    
+    # OUTPUT 3: Salary Impact by Industry
+    print("\n" + "="*80)
+    print("ANALYSIS 3: AVERAGE SALARY IMPACT BY INDUSTRY")
+    print("="*80)
+    for industry, data in sorted(industry_salary.items()):
+        if data['count'] > 0:
+            avg_before = data['sum_before'] / data['count']
+            avg_after = data['sum_after'] / data['count']
+            avg_change_pct = data['total_change'] / data['count']
+            print(f"Industry: {industry}")
+            print(f"  - Average Salary Before AI: ${avg_before:,.2f}")
+            print(f"  - Average Salary After AI: ${avg_after:,.2f}")
+            print(f"  - Average Change: {avg_change_pct:.2f}%")
+    
+    # OUTPUT 4: Upskilling Requirements by Job Role (Top 10)
+    print("\n" + "="*80)
+    print("ANALYSIS 4: UPSKILLING REQUIREMENTS BY JOB ROLE (Top 10)")
+    print("="*80)
+    upskilling_yes = [(k, v) for k, v in upskilling_count.items() if 'Yes' in k]
+    upskilling_yes.sort(key=lambda x: x[1], reverse=True)
+    for key, count in upskilling_yes[:10]:
+        job_role, _ = key.split('|')
+        print(f"Job Role: {job_role}, Requires Upskilling: Yes, Count: {count}")
+    
+    # OUTPUT 5: Automation Risk by Industry
+    print("\n" + "="*80)
+    print("ANALYSIS 5: AUTOMATION RISK BY INDUSTRY")
+    print("="*80)
+    for key, count in sorted(automation_risk_count.items(), key=lambda x: x[1], reverse=True):
+        industry, risk = key.split('|')
+        print(f"Industry: {industry}, Automation Risk: {risk}, Count: {count}")
+    
+    # OUTPUT 6: Productivity Change by AI Adoption Level
+    print("\n" + "="*80)
+    print("ANALYSIS 6: AVERAGE PRODUCTIVITY CHANGE BY AI ADOPTION LEVEL")
+    print("="*80)
+    for ai_level, data in productivity_ai.items():
+        if data['count'] > 0:
+            avg_productivity = data['sum'] / data['count']
+            print(f"AI Adoption Level: {ai_level}")
+            print(f"  - Average Productivity Change: {avg_productivity:.2f}%")
+            print(f"  - Number of Employees: {data['count']}")
+    
+    # OUTPUT 7: Job Status by AI Adoption Level
+    print("\n" + "="*80)
+    print("ANALYSIS 7: JOB STATUS BY AI ADOPTION LEVEL")
+    print("="*80)
+    for key, count in sorted(adoption_status_count.items()):
+        ai_level, status = key.split('|')
+        print(f"AI Adoption: {ai_level}, Status: {status}, Count: {count}")
+
+if __name__ == "__main__":
+    main()
