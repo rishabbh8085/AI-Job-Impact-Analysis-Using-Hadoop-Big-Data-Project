@@ -152,13 +152,6 @@ This project successfully demonstrates how the Hadoop ecosystem can be used to p
 
 ---
 
-## Author
-
-**Ajay Chauhan**
-BCA (Data Science & AI)
-Babu Banarasi Das University
-
----
 
 ## Final Note
 
